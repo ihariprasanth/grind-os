@@ -1,0 +1,2258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>GRIND OS</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #010810;
+    --bg2: #050f1a;
+    --bg3: #0a1628;
+    --neon: #00d4ff;
+    --neon2: #0088cc;
+    --neon3: #00ffcc;
+    --neon4: #004466;
+    --accent: #ff6b35;
+    --gold: #ffd700;
+    --text: #c8e8ff;
+    --text2: #7ab0cc;
+    --text3: #3a6080;
+    --border: rgba(0,212,255,0.2);
+    --border-hot: rgba(0,212,255,0.7);
+    --glow: 0 0 20px rgba(0,212,255,0.4);
+    --glow-hot: 0 0 40px rgba(0,212,255,0.8), 0 0 80px rgba(0,212,255,0.3);
+    --green: #00ff88;
+    --red: #ff3366;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: scroll;
+  }
+
+  ::-webkit-scrollbar { width: 0px; background: transparent; }
+  * { scrollbar-width: none; }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(ellipse at 20% 20%, rgba(0,100,180,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(0,180,120,0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+    animation: bgPulse 8s ease-in-out infinite alternate;
+  }
+
+  @keyframes bgPulse {
+    0% { opacity: 0.5; transform: scale(1); }
+    100% { opacity: 1; transform: scale(1.05); }
+  }
+
+  .container { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 16px; }
+
+  /* ===== SECURITY OVERLAY ===== */
+  #securityOverlay {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #securityOverlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.04) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+
+  .sec-scanline {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(0,212,255,0.6), transparent);
+    animation: secScan 2s linear infinite;
+    z-index: 1;
+  }
+
+  @keyframes secScan {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(100vh); }
+  }
+
+  .sec-box {
+    position: relative;
+    z-index: 2;
+    background: linear-gradient(135deg, #050f1a, #0a1628);
+    border: 1px solid var(--border-hot);
+    box-shadow: var(--glow-hot), inset 0 0 40px rgba(0,212,255,0.03);
+    padding: 24px 24px 20px;
+    width: 96%;
+    max-width: 980px;
+    clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+    animation: secBoxIn 0.6s ease forwards;
+  }
+
+  @media (max-width: 600px) {
+    .sec-box { padding: 18px 12px 16px; max-width: 360px; }
+  }
+
+  @keyframes secBoxIn {
+    from { opacity: 0; transform: scale(0.9) translateY(30px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .sec-corner { position: absolute; width: 20px; height: 20px; border-color: var(--neon); border-style: solid; }
+  .sec-corner.tl { top: 0; left: 0; border-width: 2px 0 0 2px; }
+  .sec-corner.tr { top: 0; right: 0; border-width: 2px 2px 0 0; }
+  .sec-corner.bl { bottom: 0; left: 0; border-width: 0 0 2px 2px; }
+  .sec-corner.br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+
+  .sec-logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 26px;
+    font-weight: 900;
+    color: var(--neon);
+    text-shadow: var(--glow-hot);
+    letter-spacing: 0.4em;
+    text-align: center;
+    margin-bottom: 3px;
+    animation: flicker 4s infinite;
+  }
+  @media (max-width: 600px) { .sec-logo { font-size: 20px; letter-spacing: 0.3em; } }
+
+  .sec-subtitle {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--text3);
+    letter-spacing: 0.3em;
+    text-align: center;
+    margin-bottom: 12px;
+  }
+
+  /* ===== CODE DISPLAY ===== */
+  .sec-display-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+    min-height: 32px;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    background: rgba(0,212,255,0.02);
+  }
+
+  .sec-digit-box {
+    width: 18px;
+    height: 18px;
+    border: 1px solid rgba(0,212,255,0.4);
+    background: rgba(0,212,255,0.04);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--neon3);
+    transition: all 0.12s;
+    flex-shrink: 0;
+  }
+  .sec-digit-box.active {
+    border-color: var(--neon);
+    box-shadow: 0 0 8px rgba(0,212,255,0.7);
+    background: rgba(0,212,255,0.12);
+    animation: cursorPulse 0.8s ease-in-out infinite alternate;
+  }
+  @keyframes cursorPulse {
+    from { box-shadow: 0 0 4px rgba(0,212,255,0.4); }
+    to   { box-shadow: 0 0 12px rgba(0,212,255,0.9); }
+  }
+  .sec-digit-box.filled {
+    border-color: var(--neon3);
+    background: var(--neon3);
+    box-shadow: 0 0 8px rgba(0,255,200,0.6);
+    color: var(--bg);
+  }
+
+  .sec-status-line {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--neon3);
+    text-align: center;
+    letter-spacing: 0.15em;
+    margin-bottom: 10px;
+    min-height: 14px;
+    animation: blink 1.5s step-end infinite;
+  }
+
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* ===== KEYBOARD LAYOUT ===== */
+  .kb-layout {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .kb-full {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  @media (max-width: 768px) { .kb-full { display: none !important; } }
+
+  .kb-row {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+  }
+
+  .kb-key {
+    background: linear-gradient(180deg, #0d2035 0%, #071420 100%);
+    border: 1px solid rgba(0,212,255,0.22);
+    border-bottom: 2px solid rgba(0,212,255,0.4);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(0,212,255,0.08);
+    color: var(--neon);
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    min-width: 36px;
+    height: 36px;
+    cursor: pointer;
+    transition: all 0.08s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    position: relative;
+    user-select: none;
+    -webkit-user-select: none;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+  }
+  .kb-key:hover {
+    background: linear-gradient(180deg, #1a3a5c 0%, #0d2035 100%);
+    border-color: rgba(0,212,255,0.6);
+    box-shadow: 0 0 10px rgba(0,212,255,0.3), 0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(0,212,255,0.15);
+    color: #fff;
+    text-shadow: 0 0 8px var(--neon);
+  }
+  .kb-key:active, .kb-key.pressed {
+    background: linear-gradient(180deg, #00d4ff22 0%, #0d2035 100%);
+    border-color: var(--neon);
+    border-bottom-color: var(--neon);
+    border-bottom-width: 1px;
+    box-shadow: 0 0 16px rgba(0,212,255,0.5), inset 0 0 10px rgba(0,212,255,0.12);
+    transform: translateY(1px);
+    color: var(--neon);
+    text-shadow: var(--glow-hot);
+  }
+  .kb-key.wide { min-width: 54px; font-size: 9px; }
+  .kb-key.wider { min-width: 72px; font-size: 9px; }
+  .kb-key.widest { min-width: 170px; font-size: 10px; letter-spacing: 0.2em; }
+  .kb-key.fn { color: var(--text3); font-size: 9px; }
+  .kb-key.enter-key {
+    background: linear-gradient(180deg, #003d55 0%, #001f2e 100%);
+    border-color: rgba(0,212,255,0.5);
+    border-bottom-color: var(--neon);
+    color: var(--neon);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+  }
+  .kb-key.enter-key:hover {
+    background: linear-gradient(180deg, var(--neon) 0%, var(--neon2) 100%);
+    color: var(--bg);
+    box-shadow: var(--glow-hot);
+  }
+  .kb-key.del-key {
+    background: linear-gradient(180deg, #2a0d15 0%, #150609 100%);
+    border-color: rgba(255,51,102,0.35);
+    border-bottom-color: var(--red);
+    color: var(--red);
+    font-size: 10px;
+  }
+  .kb-key.del-key:hover {
+    background: linear-gradient(180deg, var(--red) 0%, #aa0020 100%);
+    color: #fff;
+    box-shadow: 0 0 16px rgba(255,51,102,0.6);
+  }
+
+  /* Numpad */
+  .kb-numpad {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .kb-numpad .kb-key {
+    min-width: 50px;
+    height: 50px;
+    font-size: 16px;
+    border-radius: 4px;
+  }
+  .kb-numpad .kb-row { gap: 5px; }
+  @media (max-width: 768px) {
+    .kb-numpad .kb-key {
+      min-width: 76px;
+      height: 72px;
+      font-size: 24px;
+    }
+    .kb-numpad .kb-key.enter-key { font-size: 13px; letter-spacing: 0.08em; }
+    .kb-numpad .kb-key.del-key  { font-size: 14px; }
+    .kb-numpad .kb-row { gap: 8px; }
+    .kb-layout { gap: 0; }
+  }
+
+  .kb-sep {
+    width: 1px;
+    background: rgba(0,212,255,0.15);
+    align-self: stretch;
+    margin: 0 2px;
+  }
+  @media (max-width: 768px) { .kb-sep { display: none; } }
+
+  .sec-error {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--red);
+    text-align: center;
+    margin-top: 8px;
+    min-height: 16px;
+    animation: errShake 0.4s ease;
+  }
+
+  @keyframes errShake {
+    0%,100% { transform: translateX(0); }
+    20%,60% { transform: translateX(-6px); }
+    40%,80% { transform: translateX(6px); }
+  }
+
+  .sec-attempts {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text3);
+    text-align: center;
+    letter-spacing: 0.2em;
+    margin-top: 8px;
+  }
+
+  #securityOverlay.granted { animation: grantedFlash 0.8s ease forwards; }
+
+  @keyframes grantedFlash {
+    0% { background: #000; }
+    30% { background: rgba(0,255,136,0.15); }
+    60% { background: rgba(0,255,136,0.05); }
+    100% { opacity: 0; pointer-events: none; }
+  }
+
+  .lockout-timer {
+    font-family: 'Orbitron', monospace;
+    font-size: 28px;
+    color: var(--red);
+    text-align: center;
+    margin: 8px 0 4px;
+    text-shadow: 0 0 20px rgba(255,51,102,0.8);
+    display: none;
+  }
+
+  /* Hide old input elements */
+  .sec-input-wrap, .input-field-wrapper, .sec-input, .sec-btn, .sec-mobile-enter, .sec-label { display: none !important; }
+
+    /* HEADER */
+  .header {
+    text-align: center;
+    padding: 30px 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 30px;
+    position: relative;
+  }
+
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 50%;
+    transform: translateX(-50%);
+    width: 200px; height: 2px;
+    background: var(--neon);
+    box-shadow: var(--glow-hot);
+  }
+
+  .logo {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(28px, 6vw, 56px);
+    font-weight: 900;
+    letter-spacing: 0.4em;
+    color: var(--neon);
+    text-shadow: var(--glow-hot);
+    animation: flicker 4s infinite;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .logo:hover { text-shadow: 0 0 60px var(--neon), 0 0 120px var(--neon2); transform: scale(1.02); }
+  .logo:active { transform: scale(0.98); }
+
+  @keyframes flicker {
+    0%,95%,100% { opacity: 1; }
+    96% { opacity: 0.8; }
+    97% { opacity: 1; }
+    98% { opacity: 0.7; }
+  }
+
+  .welcome-text {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--neon3);
+    font-size: clamp(13px, 2vw, 17px);
+    letter-spacing: 0.25em;
+    margin-top: 8px;
+    text-shadow: 0 0 15px rgba(0,255,200,0.5);
+    animation: welcomePulse 3s ease-in-out infinite alternate;
+  }
+
+  @keyframes welcomePulse {
+    0% { opacity: 0.8; }
+    100% { opacity: 1; text-shadow: 0 0 25px rgba(0,255,200,0.8); }
+  }
+
+  .subtitle { font-family: 'Share Tech Mono', monospace; color: var(--text3); font-size: 11px; letter-spacing: 0.4em; margin-top: 5px; }
+
+  .mission-timer { display: flex; justify-content: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+
+  .timer-block {
+    text-align: center;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 10px 16px;
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+    transition: all 0.2s;
+    cursor: pointer;
+    min-width: 80px;
+  }
+
+  .timer-block:hover { border-color: var(--neon); box-shadow: var(--glow); }
+  .timer-block:active { transform: scale(0.97); }
+
+  .timer-num { font-family: 'Orbitron', monospace; font-size: clamp(20px, 4vw, 28px); font-weight: 700; color: var(--neon); text-shadow: var(--glow); display: block; }
+  .timer-label { font-size: 9px; letter-spacing: 0.15em; color: var(--text3); font-family: 'Share Tech Mono', monospace; }
+
+  /* SYNC STATUS */
+  .sync-bar {
+    display: flex; align-items: center; justify-content: center;
+    gap: 10px; margin-bottom: 16px;
+    font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3);
+    flex-wrap: wrap;
+  }
+
+  .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+  .sync-dot.syncing { background: var(--gold); animation: syncPulse 0.8s ease-in-out infinite; }
+  .sync-dot.synced { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .sync-dot.error { background: var(--red); }
+
+  @keyframes syncPulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  /* STATS */
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 24px; }
+
+  .stat-card {
+    background: linear-gradient(135deg, var(--bg3), var(--bg2));
+    border: 1px solid var(--border);
+    padding: 14px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s;
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+    cursor: pointer;
+  }
+
+  .stat-card:hover { border-color: var(--neon); box-shadow: var(--glow); }
+  .stat-card:active { transform: scale(0.98); }
+
+  .stat-card::before {
+    content: ''; position: absolute; top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--neon); box-shadow: 0 0 10px var(--neon);
+  }
+
+  .stat-num { font-family: 'Orbitron', monospace; font-size: clamp(20px, 4vw, 26px); font-weight: 700; color: var(--neon); text-shadow: var(--glow); }
+  .stat-label { font-size: 10px; color: var(--text3); letter-spacing: 0.1em; margin-top: 4px; }
+  .stat-sub { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+  /* MAIN GRID */
+  .main-grid { display: grid; grid-template-columns: 1fr 320px; gap: 16px; margin-bottom: 24px; }
+  @media (max-width: 1000px) { .main-grid { grid-template-columns: 1fr; } }
+
+  /* PANEL */
+  .panel {
+    background: linear-gradient(135deg, var(--bg3), var(--bg2));
+    border: 1px solid var(--border);
+    padding: 18px;
+    position: relative;
+  }
+
+  .panel-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 12px; letter-spacing: 0.25em; color: var(--neon);
+    text-shadow: var(--glow); margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .panel-title::before { content: ''; width: 4px; height: 16px; background: var(--neon); box-shadow: 0 0 8px var(--neon); display: inline-block; flex-shrink: 0; }
+
+  /* TODAY LOG */
+  .today-grid { display: grid; gap: 8px; }
+
+  .task-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center; gap: 10px;
+    padding: 10px 12px;
+    background: rgba(0,212,255,0.04);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--neon4);
+    transition: all 0.15s; cursor: pointer;
+  }
+
+  .task-row:hover { background: rgba(0,212,255,0.08); border-left-color: var(--neon); }
+  .task-row:active { transform: scale(0.99); }
+  .task-row.done { border-left-color: var(--green); background: rgba(0,255,136,0.05); }
+
+  .task-name { font-size: 14px; font-weight: 600; letter-spacing: 0.05em; }
+  .task-row.done .task-name { color: var(--green); }
+
+  .task-pts { font-family: 'Orbitron', monospace; font-size: 11px; color: var(--gold); text-shadow: 0 0 8px rgba(255,215,0,0.5); white-space: nowrap; }
+
+  .task-toggle {
+    width: 26px; height: 26px;
+    border: 2px solid var(--neon4);
+    background: transparent; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: transparent; font-size: 13px; transition: all 0.2s; flex-shrink: 0;
+  }
+
+  .task-row.done .task-toggle { border-color: var(--green); background: rgba(0,255,136,0.2); color: var(--green); box-shadow: 0 0 10px rgba(0,255,136,0.4); }
+
+  .today-pts {
+    margin-top: 12px; padding: 10px 12px;
+    background: rgba(0,212,255,0.05); border: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+
+  .today-pts-label { font-size: 12px; color: var(--text2); letter-spacing: 0.1em; }
+  .today-pts-num { font-family: 'Orbitron', monospace; font-size: 20px; color: var(--gold); text-shadow: 0 0 15px rgba(255,215,0,0.6); }
+
+  /* HEATMAP */
+  .heatmap-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 10px; width: 100%; }
+  .heatmap-outer { display: flex; align-items: flex-start; min-width: max-content; }
+  .heatmap-wrap { display: flex; gap: 3px; }
+  .heatmap-col { display: flex; flex-direction: column; gap: 3px; }
+
+  .heatmap-cell {
+    width: 12px; height: 12px; border-radius: 2px;
+    background: var(--bg3);
+    border: 1px solid rgba(0,212,255,0.05);
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    position: relative;
+    flex-shrink: 0;
+    touch-action: manipulation;
+  }
+
+  @media (max-width: 600px) {
+    .heatmap-cell { width: 10px; height: 10px; }
+  }
+
+  .heatmap-cell:hover { transform: scale(1.5); z-index: 10; }
+  .heatmap-cell:active { transform: scale(1.3); }
+
+  .heatmap-cell[data-pts="0"] { background: #0a1628; }
+  .heatmap-cell[data-pts="1"] { background: #003344; border-color: rgba(0,212,255,0.15); }
+  .heatmap-cell[data-pts="2"] { background: #004d66; border-color: rgba(0,212,255,0.3); }
+  .heatmap-cell[data-pts="3"] { background: #006699; border-color: rgba(0,212,255,0.5); box-shadow: 0 0 4px rgba(0,150,220,0.4); }
+  .heatmap-cell[data-pts="4"] { background: #0099cc; border-color: rgba(0,212,255,0.7); box-shadow: 0 0 6px rgba(0,180,255,0.5); }
+  .heatmap-cell[data-pts="5"] { background: #00ccff; border-color: #00d4ff; box-shadow: 0 0 8px rgba(0,212,255,0.7); }
+  .heatmap-cell[data-pts="6"] { background: #00d4ff; box-shadow: 0 0 10px rgba(0,212,255,0.8); }
+  .heatmap-cell[data-pts="7"] { background: #33dfff; box-shadow: 0 0 12px rgba(0,220,255,0.9); }
+  .heatmap-cell[data-pts="8"] { background: #00ffcc; box-shadow: 0 0 15px rgba(0,255,200,0.9); }
+
+  .heatmap-month-labels {
+    position: relative; height: 16px;
+    margin-bottom: 4px;
+    font-family: 'Share Tech Mono', monospace; font-size: 9px; color: var(--text3);
+  }
+
+  .heatmap-legend {
+    display: flex; align-items: center; gap: 6px; margin-top: 10px;
+    font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--text3);
+    flex-wrap: wrap;
+  }
+
+  .legend-cells { display: flex; gap: 3px; }
+  .legend-cell { width: 12px; height: 12px; border-radius: 2px; }
+
+  .heatmap-days { display: flex; flex-direction: column; gap: 3px; margin-right: 4px; margin-top: 16px; flex-shrink: 0; }
+  .heatmap-day-label { font-family: 'Share Tech Mono', monospace; font-size: 9px; color: var(--text3); height: 12px; line-height: 12px; }
+  @media (max-width: 600px) {
+    .heatmap-day-label { height: 10px; line-height: 10px; }
+  }
+
+  /* TOUCH TOOLTIP for heatmap on mobile */
+  .touch-tip {
+    position: fixed;
+    background: var(--bg3); border: 1px solid var(--neon);
+    box-shadow: var(--glow); padding: 6px 12px;
+    font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--neon);
+    pointer-events: none; z-index: 9000; white-space: nowrap;
+    display: none;
+    border-radius: 2px;
+  }
+
+  /* SIDE PANEL */
+  .side-panels { display: flex; flex-direction: column; gap: 14px; }
+  .streak-display { text-align: center; padding: 16px; position: relative; cursor: pointer; }
+  .streak-display:active { transform: scale(0.98); }
+
+  .streak-icon {
+    font-family: 'Orbitron', monospace;
+    font-size: 13px; color: var(--accent);
+    letter-spacing: 0.25em;
+    line-height: 1; margin-bottom: 8px;
+    animation: firePulse 1.5s ease-in-out infinite alternate;
+    text-shadow: 0 0 20px rgba(255,107,53,0.8);
+  }
+
+  @keyframes firePulse {
+    0% { transform: scale(1); filter: brightness(1); }
+    100% { transform: scale(1.1); filter: brightness(1.3); }
+  }
+
+  .streak-num { font-family: 'Orbitron', monospace; font-size: 48px; font-weight: 900; color: var(--accent); text-shadow: 0 0 30px rgba(255,107,53,0.8); line-height: 1; }
+  .streak-label { font-size: 12px; color: var(--text3); letter-spacing: 0.2em; margin-top: 4px; }
+
+  /* PROGRESS RING */
+  .ring-wrap { display: flex; justify-content: center; align-items: center; padding: 10px; position: relative; cursor: pointer; }
+  .ring-wrap:active { transform: scale(0.98); }
+  .progress-ring-svg { transform: rotate(-90deg); }
+  .ring-text { position: absolute; text-align: center; }
+  .ring-pct { font-family: 'Orbitron', monospace; font-size: 24px; font-weight: 700; color: var(--neon); text-shadow: var(--glow); display: block; }
+  .ring-sub { font-size: 10px; color: var(--text3); letter-spacing: 0.1em; }
+
+  /* CATEGORY BARS */
+  .cat-bars { display: flex; flex-direction: column; gap: 8px; }
+  .cat-bar-row { cursor: pointer; transition: all 0.15s; }
+  .cat-bar-row:active { transform: scale(0.99); }
+  .cat-bar-top { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+  .cat-bar-name { color: var(--text2); font-weight: 600; letter-spacing: 0.05em; }
+  .cat-bar-val { font-family: 'Share Tech Mono', monospace; color: var(--neon); font-size: 11px; }
+  .cat-bar-bg { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; border: 1px solid var(--border); }
+  .cat-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--neon2), var(--neon)); box-shadow: 0 0 8px var(--neon); transition: width 1s ease; }
+
+  /* WEEKLY CHART — FIXED RESPONSIVE */
+  .week-chart-container { width: 100%; overflow: hidden; }
+  .week-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 90px;
+    padding: 0 2px;
+    width: 100%;
+  }
+  .week-bar-wrap {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    height: 100%;
+  }
+  .week-bar-wrap:active { transform: scale(0.97); }
+  .week-bar-outer {
+    flex: 1;
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    border-radius: 2px;
+    overflow: hidden;
+    min-height: 0;
+  }
+  .week-bar-inner {
+    width: 100%;
+    background: linear-gradient(180deg, var(--neon), var(--neon2));
+    box-shadow: 0 0 8px var(--neon);
+    transition: height 1s ease;
+    min-height: 0;
+  }
+  .week-bar-inner.today-bar {
+    background: linear-gradient(180deg, var(--neon3), var(--neon));
+    box-shadow: 0 0 10px var(--neon3);
+  }
+  .week-day {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--text3);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .week-day.today-label { color: var(--neon3); font-weight: bold; }
+
+  /* TOOLTIP */
+  .tooltip {
+    position: fixed; display: none;
+    background: var(--bg3); border: 1px solid var(--neon);
+    box-shadow: var(--glow); padding: 6px 12px;
+    font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--neon);
+    pointer-events: none; z-index: 1000; white-space: nowrap;
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: none; align-items: center; justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--bg2); border: 1px solid var(--border-hot);
+    box-shadow: var(--glow-hot); padding: 24px;
+    width: 90%; max-width: 480px;
+    clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-title { font-family: 'Orbitron', monospace; font-size: 13px; letter-spacing: 0.25em; color: var(--neon); margin-bottom: 16px; }
+  .modal-date { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--text3); margin-bottom: 16px; }
+  .modal-tasks { display: grid; gap: 8px; }
+
+  .modal-task {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px;
+    background: rgba(0,212,255,0.04); border: 1px solid var(--border);
+    cursor: pointer; transition: all 0.15s;
+  }
+
+  .modal-task:hover { border-color: var(--neon); background: rgba(0,212,255,0.1); }
+  .modal-task:active { transform: scale(0.99); }
+  .modal-task.checked { border-color: var(--green); background: rgba(0,255,136,0.05); }
+
+  .modal-checkbox { width: 20px; height: 20px; border: 2px solid var(--neon4); display: flex; align-items: center; justify-content: center; font-size: 12px; color: transparent; flex-shrink: 0; transition: all 0.2s; }
+  .modal-task.checked .modal-checkbox { border-color: var(--green); background: rgba(0,255,136,0.2); color: var(--green); }
+  .modal-task-name { font-size: 13px; font-weight: 600; flex: 1; }
+  .modal-task.checked .modal-task-name { color: var(--green); }
+  .modal-task-pts { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--gold); }
+
+  .modal-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
+  .modal-total { font-family: 'Orbitron', monospace; font-size: 18px; color: var(--gold); text-shadow: 0 0 10px rgba(255,215,0,0.5); }
+
+  .btn {
+    padding: 10px 20px; background: transparent;
+    border: 1px solid var(--neon); color: var(--neon);
+    font-family: 'Orbitron', monospace; font-size: 11px;
+    letter-spacing: 0.2em; cursor: pointer; transition: all 0.15s;
+    clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+  }
+
+  .btn:hover { background: var(--neon); color: var(--bg); box-shadow: var(--glow-hot); }
+  .btn:active { transform: scale(0.95); }
+  .btn-cancel { border-color: var(--text3); color: var(--text3); }
+  .btn-cancel:hover { background: var(--text3); color: var(--bg); box-shadow: none; }
+
+  .close-modal { position: absolute; top: 10px; right: 14px; background: none; border: none; color: var(--text3); font-size: 20px; cursor: pointer; line-height: 1; transition: all 0.15s; z-index: 2; }
+  .close-modal:hover { color: var(--neon); }
+
+  /* NAV TABS */
+  .nav-tabs { display: flex; gap: 2px; margin-bottom: 20px; border-bottom: 1px solid var(--border); overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  .tab {
+    padding: 10px 18px; background: transparent; border: none; color: var(--text3);
+    font-family: 'Orbitron', monospace; font-size: 11px; letter-spacing: 0.2em;
+    cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s;
+    white-space: nowrap; margin-bottom: -1px;
+  }
+
+  .tab:hover { color: var(--text2); }
+  .tab:active { transform: scale(0.95); }
+  .tab.active { color: var(--neon); border-bottom-color: var(--neon); text-shadow: var(--glow); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* HISTORY TABLE */
+  .history-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .history-table th { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 0.15em; color: var(--text3); padding: 8px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+  .history-table td { padding: 8px 8px; border-bottom: 1px solid rgba(0,212,255,0.05); vertical-align: middle; }
+  .history-table tr:hover td { background: rgba(0,212,255,0.04); }
+
+  .task-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin: 1px; }
+  .task-dot.done { background: var(--green); box-shadow: 0 0 4px var(--green); }
+  .task-dot.miss { background: var(--text3); }
+
+  .pts-badge { font-family: 'Orbitron', monospace; font-size: 11px; padding: 2px 8px; background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3); color: var(--gold); }
+
+  /* SCAN LINE */
+  @keyframes scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(100vh); } }
+  .scanline { position: fixed; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, rgba(0,212,255,0.2), transparent); animation: scanline 6s linear infinite; pointer-events: none; z-index: 999; }
+
+  /* CORNER DECORATIONS */
+  .corner-dec { position: absolute; width: 16px; height: 16px; border-color: var(--neon); border-style: solid; opacity: 0.5; }
+  .corner-dec.tl { top: 0; left: 0; border-width: 2px 0 0 2px; }
+  .corner-dec.tr { top: 0; right: 0; border-width: 2px 2px 0 0; }
+  .corner-dec.bl { bottom: 0; left: 0; border-width: 0 0 2px 2px; }
+  .corner-dec.br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+
+  @media (max-width: 600px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .modal { padding: 16px; }
+    .container { padding: 10px; }
+  }
+
+  .edit-btn { background: none; border: 1px solid var(--border); color: var(--text3); font-size: 10px; padding: 2px 8px; cursor: pointer; font-family: 'Share Tech Mono', monospace; transition: all 0.15s; }
+  .edit-btn:hover { border-color: var(--neon); color: var(--neon); }
+  .edit-btn:active { transform: scale(0.95); }
+
+  .notification {
+    position: fixed; top: 16px; right: 16px;
+    background: var(--bg3); border: 1px solid var(--neon);
+    box-shadow: var(--glow); padding: 10px 18px;
+    font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--neon);
+    z-index: 5000; transform: translateX(200%); transition: transform 0.3s ease;
+    max-width: 280px;
+  }
+
+  .notification.show { transform: translateX(0); }
+  .sync-hint { font-size: 10px; color: var(--text3); margin-left: 6px; }
+
+  button, .clickable, .task-row, .stat-card, .timer-block, .heatmap-cell, .tab, .modal-task, .edit-btn { cursor: pointer; }
+
+  /* XP bar animation */
+  @keyframes xpFill {
+    from { width: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== SECURITY OVERLAY ===== -->
+<div id="securityOverlay">
+  <div class="sec-scanline"></div>
+  <div class="sec-box">
+    <div class="sec-corner tl"></div>
+    <div class="sec-corner tr"></div>
+    <div class="sec-corner bl"></div>
+    <div class="sec-corner br"></div>
+    <div class="sec-logo">GRIND OS</div>
+    <div class="sec-subtitle">CLASSIFIED SYSTEM — AUTHORIZED PERSONNEL ONLY</div>
+    <div class="sec-status-line" id="secStatusLine">AWAITING AUTHENTICATION...</div>
+
+    <!-- Code digit display (dynamic dots via JS) -->
+    <div class="sec-display-wrap" id="secDisplay"></div>
+
+    <!-- Keyboard -->
+    <div class="kb-layout">
+      <!-- Full keyboard (desktop only) -->
+      <div class="kb-full">
+        <!-- Row 0: Esc + F keys -->
+        <div class="kb-row">
+          <button class="kb-key fn wide" data-key="ESC">ESC</button>
+          <button class="kb-key fn" style="min-width:28px;"></button>
+          <button class="kb-key fn" data-key="F1">F1</button>
+          <button class="kb-key fn" data-key="F2">F2</button>
+          <button class="kb-key fn" data-key="F3">F3</button>
+          <button class="kb-key fn" data-key="F4">F4</button>
+          <button class="kb-key fn" style="min-width:12px;"></button>
+          <button class="kb-key fn" data-key="F5">F5</button>
+          <button class="kb-key fn" data-key="F6">F6</button>
+          <button class="kb-key fn" data-key="F7">F7</button>
+          <button class="kb-key fn" data-key="F8">F8</button>
+          <button class="kb-key fn" style="min-width:12px;"></button>
+          <button class="kb-key fn" data-key="F9">F9</button>
+          <button class="kb-key fn" data-key="F10">F10</button>
+          <button class="kb-key fn" data-key="F11">F11</button>
+          <button class="kb-key fn" data-key="F12">F12</button>
+        </div>
+        <!-- Row 1: Numbers -->
+        <div class="kb-row">
+          <button class="kb-key" data-key="`">`</button>
+          <button class="kb-key num" data-key="1">1</button>
+          <button class="kb-key num" data-key="2">2</button>
+          <button class="kb-key num" data-key="3">3</button>
+          <button class="kb-key num" data-key="4">4</button>
+          <button class="kb-key num" data-key="5">5</button>
+          <button class="kb-key num" data-key="6">6</button>
+          <button class="kb-key num" data-key="7">7</button>
+          <button class="kb-key num" data-key="8">8</button>
+          <button class="kb-key num" data-key="9">9</button>
+          <button class="kb-key num" data-key="0">0</button>
+          <button class="kb-key" data-key="-">-</button>
+          <button class="kb-key" data-key="=">=</button>
+          <button class="kb-key del-key wider" data-key="DEL">⌫ DEL</button>
+        </div>
+        <!-- Row 2: QWERTY -->
+        <div class="kb-row">
+          <button class="kb-key fn wider" data-key="TAB">TAB</button>
+          <button class="kb-key" data-key="Q">Q</button>
+          <button class="kb-key" data-key="W">W</button>
+          <button class="kb-key" data-key="E">E</button>
+          <button class="kb-key" data-key="R">R</button>
+          <button class="kb-key" data-key="T">T</button>
+          <button class="kb-key" data-key="Y">Y</button>
+          <button class="kb-key" data-key="U">U</button>
+          <button class="kb-key" data-key="I">I</button>
+          <button class="kb-key" data-key="O">O</button>
+          <button class="kb-key" data-key="P">P</button>
+          <button class="kb-key" data-key="[">[</button>
+          <button class="kb-key" data-key="]">]</button>
+          <button class="kb-key" data-key="\">\</button>
+        </div>
+        <!-- Row 3: ASDF -->
+        <div class="kb-row">
+          <button class="kb-key fn wider" style="min-width:68px;" data-key="CAPS">CAPS</button>
+          <button class="kb-key" data-key="A">A</button>
+          <button class="kb-key" data-key="S">S</button>
+          <button class="kb-key" data-key="D">D</button>
+          <button class="kb-key" data-key="F">F</button>
+          <button class="kb-key" data-key="G">G</button>
+          <button class="kb-key" data-key="H">H</button>
+          <button class="kb-key" data-key="J">J</button>
+          <button class="kb-key" data-key="K">K</button>
+          <button class="kb-key" data-key="L">L</button>
+          <button class="kb-key" data-key=";">;</button>
+          <button class="kb-key" data-key="'">'</button>
+          <button class="kb-key enter-key wider" style="min-width:78px;" data-key="ENTER">ENTER ↵</button>
+        </div>
+        <!-- Row 4: ZXCV -->
+        <div class="kb-row">
+          <button class="kb-key fn wider" style="min-width:88px;" data-key="SHIFT">SHIFT</button>
+          <button class="kb-key" data-key="Z">Z</button>
+          <button class="kb-key" data-key="X">X</button>
+          <button class="kb-key" data-key="C">C</button>
+          <button class="kb-key" data-key="V">V</button>
+          <button class="kb-key" data-key="B">B</button>
+          <button class="kb-key" data-key="N">N</button>
+          <button class="kb-key" data-key="M">M</button>
+          <button class="kb-key" data-key=",">,</button>
+          <button class="kb-key" data-key=".">.</button>
+          <button class="kb-key" data-key="/">/</button>
+          <button class="kb-key fn wider" style="min-width:88px;" data-key="SHIFT">SHIFT</button>
+        </div>
+        <!-- Row 5: Space -->
+        <div class="kb-row">
+          <button class="kb-key fn wider" data-key="CTRL">CTRL</button>
+          <button class="kb-key fn" data-key="ALT">ALT</button>
+          <button class="kb-key widest" data-key=" ">SPACE</button>
+          <button class="kb-key fn" data-key="ALT">ALT</button>
+          <button class="kb-key fn wider" data-key="CTRL">CTRL</button>
+        </div>
+      </div>
+
+      <!-- Separator -->
+      <div class="kb-sep"></div>
+
+      <!-- Numpad — always visible -->
+      <div class="kb-numpad">
+        <div class="kb-row">
+          <button class="kb-key num" data-key="7">7</button>
+          <button class="kb-key num" data-key="8">8</button>
+          <button class="kb-key num" data-key="9">9</button>
+        </div>
+        <div class="kb-row">
+          <button class="kb-key num" data-key="4">4</button>
+          <button class="kb-key num" data-key="5">5</button>
+          <button class="kb-key num" data-key="6">6</button>
+        </div>
+        <div class="kb-row">
+          <button class="kb-key num" data-key="1">1</button>
+          <button class="kb-key num" data-key="2">2</button>
+          <button class="kb-key num" data-key="3">3</button>
+        </div>
+        <div class="kb-row">
+          <button class="kb-key del-key" data-key="DEL">⌫</button>
+          <button class="kb-key num" data-key="0">0</button>
+          <button class="kb-key enter-key" data-key="ENTER">↵</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-error" id="secError"></div>
+    <div class="lockout-timer" id="lockoutTimer">--:--</div>
+    <div class="sec-attempts" id="secAttempts">SYSTEM LOCKS AFTER 5 FAILED ATTEMPTS</div>
+
+    <div style="margin-top:16px;display:flex;align-items:center;gap:10px;">
+      <div style="flex:1;height:1px;background:rgba(0,212,255,0.15);"></div>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.15em;">OR</span>
+      <div style="flex:1;height:1px;background:rgba(0,212,255,0.15);"></div>
+    </div>
+    <button id="viewOnlyBtn" onclick="enterViewOnly()" style="
+      margin-top:12px;width:100%;
+      background:transparent;
+      border:1px solid rgba(0,212,255,0.25);
+      color:var(--text3);
+      font-family:'Share Tech Mono',monospace;
+      font-size:11px;letter-spacing:.2em;
+      padding:10px 16px;cursor:pointer;
+      transition:all 0.2s;
+      clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));
+    "
+    onmouseover="this.style.borderColor='rgba(0,212,255,0.5)';this.style.color='var(--text2)';"
+    onmouseout="this.style.borderColor='rgba(0,212,255,0.25)';this.style.color='var(--text3)';">
+       VIEW ONLY — NO LOGIN REQUIRED
+    </button>
+  </div>
+</div>
+
+<div class="scanline"></div>
+<div class="tooltip" id="tooltip"></div>
+<div class="touch-tip" id="touchTip"></div>
+<div class="notification" id="notif"></div>
+
+<!-- LOG MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="corner-dec tl"></div><div class="corner-dec tr"></div>
+    <div class="corner-dec bl"></div><div class="corner-dec br"></div>
+    <button class="close-modal" onclick="closeModal()">✕</button>
+    <div class="modal-title" id="modalTitle">LOG ENTRY</div>
+    <div class="modal-date" id="modalDate"></div>
+    <div class="modal-tasks" id="modalTasks"></div>
+    <div class="modal-footer">
+      <div>
+        <div style="font-size:11px;color:var(--text3);letter-spacing:.1em;">TOTAL POINTS</div>
+        <div class="modal-total" id="modalTotal">0 XP</div>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-cancel" onclick="closeModal()">CANCEL</button>
+        <button class="btn" onclick="saveModal()">SAVE LOG</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="header" style="position:relative;">
+    <div class="corner-dec tl"></div>
+    <div class="corner-dec tr"></div>
+    <div class="logo clickable" id="mainLogo">GRIND<span>OS</span></div>
+    <div id="viewOnlyBadge" style="display:none;margin-top:8px;">
+      <span style="display:inline-block;background:rgba(255,107,53,0.1);border:1px solid var(--accent);color:var(--accent);font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.2em;padding:4px 14px;clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);">
+         VIEW ONLY MODE — READ ACCESS
+      </span>
+    </div>
+    <div class="welcome-text">// WELCOME HARIPRASANTH T //</div>
+    <div class="subtitle">MISSION: 366 DAYS — APR 14, 2026 TO APR 14, 2027</div>
+    <div class="mission-timer">
+      <div class="timer-block clickable">
+        <span class="timer-num" id="daysElapsed">0</span>
+        <span class="timer-label">DAYS DONE</span>
+      </div>
+      <div class="timer-block clickable">
+        <span class="timer-num" id="daysLeft">366</span>
+        <span class="timer-label">DAYS LEFT</span>
+      </div>
+      <div class="timer-block clickable">
+        <span class="timer-num" id="totalXP">0</span>
+        <span class="timer-label">TOTAL XP</span>
+      </div>
+      <div class="timer-block clickable">
+        <span class="timer-num" id="maxXP">14640</span>
+        <span class="timer-label">MAX XP</span>
+      </div>
+    </div>
+    <div class="sync-bar" style="margin-top:12px;">
+      <div class="sync-dot" id="syncDot"></div>
+      <span id="syncStatus">INITIALIZING...</span>
+      <button class="clickable" onclick="syncFromFirebase()" style="background:none;border:1px solid var(--neon4);color:var(--text3);font-family:'Share Tech Mono',monospace;font-size:10px;padding:3px 10px;cursor:pointer;letter-spacing:.1em;" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--neon4)';this.style.color='var(--text3)'">SYNC NOW</button>
+    </div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="tab active clickable" onclick="switchTab('dashboard')">DASHBOARD</button>
+    <button class="tab clickable" onclick="switchTab('heatmap')">HEATMAP</button>
+    <button class="tab clickable" onclick="switchTab('history')">HISTORY</button>
+  </div>
+
+  <!-- DASHBOARD TAB -->
+  <div class="tab-content active" id="tab-dashboard">
+    <div class="stats-row">
+      <div class="stat-card clickable"><div class="stat-num" id="statStreak">0</div><div class="stat-label">CURRENT STREAK</div><div class="stat-sub">days</div></div>
+      <div class="stat-card clickable"><div class="stat-num" id="statBest">0</div><div class="stat-label">BEST STREAK</div><div class="stat-sub">days</div></div>
+      <div class="stat-card clickable"><div class="stat-num" id="statTodayPts">0</div><div class="stat-label">TODAY'S XP</div><div class="stat-sub">/ 40 max</div></div>
+      <div class="stat-card clickable"><div class="stat-num" id="statWeekPts">0</div><div class="stat-label">THIS WEEK</div><div class="stat-sub">XP earned</div></div>
+      <div class="stat-card clickable"><div class="stat-num" id="statCompDays">0</div><div class="stat-label">PERFECT DAYS</div><div class="stat-sub">40/40 XP</div></div>
+      <div class="stat-card clickable"><div class="stat-num" id="statAvgPts">0</div><div class="stat-label">AVG XP/DAY</div><div class="stat-sub">all time</div></div>
+    </div>
+
+    <div class="main-grid">
+      <div>
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="corner-dec tl"></div><div class="corner-dec tr"></div>
+          <div class="panel-title">TODAY'S MISSIONS — <span style="color:var(--text2);font-size:11px;" id="todayDateLabel"></span></div>
+          <div class="today-grid" id="todayGrid"></div>
+          <div class="today-pts">
+            <span class="today-pts-label">TODAY'S TOTAL XP</span>
+            <span class="today-pts-num" id="todayTotalPts">0 / 40 XP</span>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="corner-dec tl"></div>
+          <div class="panel-title">WEEKLY XP CHART</div>
+          <div class="week-chart-container">
+            <div class="week-chart" id="weekChart"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="side-panels">
+        <div class="panel" style="text-align:center;position:relative;">
+          <div class="corner-dec tl"></div><div class="corner-dec tr"></div>
+          <div class="panel-title" style="justify-content:center;">STREAK</div>
+          <div class="streak-display clickable">
+            <div class="streak-icon">[ HOT STREAK ]</div>
+            <div class="streak-num" id="sideStreak">0</div>
+            <div class="streak-label">DAYS IN A ROW</div>
+          </div>
+        </div>
+        <div class="panel" style="position:relative;">
+          <div class="corner-dec tl"></div>
+          <div class="panel-title">YEAR PROGRESS</div>
+          <div class="ring-wrap clickable">
+            <svg class="progress-ring-svg" width="110" height="110" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="var(--bg3)" stroke-width="8"/>
+              <circle id="yearRing" cx="60" cy="60" r="50" fill="none" stroke="var(--neon)" stroke-width="8"
+                stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="314"
+                style="filter:drop-shadow(0 0 8px var(--neon));transition:stroke-dashoffset 1s ease;"/>
+            </svg>
+            <div class="ring-text">
+              <span class="ring-pct" id="yearPct">0%</span>
+              <span class="ring-sub">OF YEAR</span>
+            </div>
+          </div>
+        </div>
+        <div class="panel" style="position:relative;">
+          <div class="corner-dec tl"></div>
+          <div class="panel-title">TASK COMPLETION</div>
+          <div class="cat-bars" id="catBars"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HEATMAP TAB -->
+  <div class="tab-content" id="tab-heatmap">
+    <div class="panel" style="position:relative;">
+      <div class="corner-dec tl"></div><div class="corner-dec tr"></div>
+      <div class="panel-title">CONTRIBUTION HEATMAP — APR 14, 2026 TO APR 14, 2027</div>
+      <div class="heatmap-scroll">
+        <div class="heatmap-outer">
+          <div>
+            <div style="height:16px;"></div>
+            <div class="heatmap-days" id="heatmapDayLabels"></div>
+          </div>
+          <div style="overflow: visible; flex: 1;">
+            <div class="heatmap-month-labels" id="heatmapMonthLabels"></div>
+            <div class="heatmap-wrap" id="heatmapGrid"></div>
+          </div>
+        </div>
+      </div>
+      <div class="heatmap-legend">
+        <span>LESS</span>
+        <div class="legend-cells">
+          <div class="legend-cell" style="background:#0a1628;border:1px solid rgba(0,212,255,0.05);"></div>
+          <div class="legend-cell" style="background:#004d66;"></div>
+          <div class="legend-cell" style="background:#0099cc;box-shadow:0 0 6px rgba(0,180,255,0.5);"></div>
+          <div class="legend-cell" style="background:#00d4ff;box-shadow:0 0 10px rgba(0,212,255,0.8);"></div>
+          <div class="legend-cell" style="background:#00ffcc;box-shadow:0 0 15px rgba(0,255,200,0.9);"></div>
+        </div>
+        <span>MORE</span>
+        <span style="margin-left:12px;">1 cell = 1 day · max 8 tasks</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY TAB -->
+  <div class="tab-content" id="tab-history">
+    <div class="panel" style="position:relative;">
+      <div class="corner-dec tl"></div><div class="corner-dec tr"></div>
+      <div class="panel-title">ACTIVITY LOG</div>
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>DATE</th>
+              <th>LC</th><th>GH</th><th>APT</th><th>G4G</th><th>CC</th><th>LI</th><th>COM</th><th>MT</th>
+              <th>XP</th><th>EDIT</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+        <div id="historyEmpty" style="text-align:center;padding:40px;color:var(--text3);font-family:'Share Tech Mono',monospace;font-size:13px;">NO ENTRIES YET — START LOGGING TODAY</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== VIEW-ONLY MODE =====
+let isViewOnly = false;
+
+window.enterViewOnly = function() {
+  isViewOnly = true;
+  const overlay = document.getElementById('securityOverlay');
+  overlay.classList.add('granted');
+  setTimeout(() => { overlay.style.display = 'none'; }, 800);
+  document.getElementById('viewOnlyBadge').style.display = 'block';
+  // Hide all edit controls after load
+  setTimeout(applyViewOnlyUI, 100);
+};
+
+function applyViewOnlyUI() {
+  // Hide SYNC NOW button
+  const syncBtn = document.querySelector('.sync-bar button');
+  if (syncBtn) syncBtn.style.display = 'none';
+}
+
+// ===== SECURITY — PASSWORD FROM FIREBASE + KEYBOARD =====
+(function() {
+  let _c = null;
+  let typedCode = '';
+  let attempts = 0;
+  const MAX_ATT = 5;
+  const LOCK_SECS = 120;
+  let lockTimer = null;
+  let lockRemaining = 0;
+  let locked = false;
+
+  // ---- Typed code display (dots, no digit count reveal) ----
+  function updateDisplay() {
+    const wrap = document.getElementById('secDisplay');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    const len = typedCode.length;
+    if (len === 0) {
+      // Show a blinking cursor placeholder
+      const cur = document.createElement('div');
+      cur.className = 'sec-digit-box active';
+      cur.textContent = '';
+      wrap.appendChild(cur);
+      return;
+    }
+    for (let i = 0; i < len; i++) {
+      const box = document.createElement('div');
+      box.className = 'sec-digit-box filled';
+      box.textContent = '●';
+      wrap.appendChild(box);
+    }
+    // trailing cursor
+    const cur = document.createElement('div');
+    cur.className = 'sec-digit-box active';
+    cur.textContent = '';
+    wrap.appendChild(cur);
+  }
+  updateDisplay();
+
+  // ---- Keyboard click sound (tech beep) ----
+  let _audioCtx = null;
+  function getAudioCtx() {
+    if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return _audioCtx;
+  }
+
+  function playKeyClick(isSpecial) {
+    try {
+      const ctx = getAudioCtx();
+      ctx.resume();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = isSpecial ? 'sine' : 'square';
+      osc.frequency.setValueAtTime(isSpecial ? 1200 : 800, now);
+      osc.frequency.exponentialRampToValueAtTime(isSpecial ? 600 : 400, now + 0.06);
+      gain.gain.setValueAtTime(0.06, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.08);
+    } catch(e) {}
+  }
+
+  function playDeleteClick() {
+    try {
+      const ctx = getAudioCtx();
+      ctx.resume();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(300, now);
+      osc.frequency.exponentialRampToValueAtTime(100, now + 0.08);
+      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.1);
+    } catch(e) {}
+  }
+
+  // ---- Key press visual flash ----
+  function flashKey(el) {
+    if (!el) return;
+    el.classList.add('pressed');
+    setTimeout(() => el.classList.remove('pressed'), 110);
+  }
+
+  // ---- Type a character (any printable char accepted) ----
+  function typeChar(ch) {
+    if (locked || _c === null) return;
+    typedCode += ch;
+    updateDisplay();
+    playKeyClick(false);
+  }
+
+  function doDelete() {
+    if (locked) return;
+    if (typedCode.length === 0) return;
+    typedCode = typedCode.slice(0, -1);
+    updateDisplay();
+    playDeleteClick();
+    document.getElementById('secError').textContent = '';
+  }
+
+  // ---- Attach keyboard button listeners ----
+  document.querySelectorAll('.kb-key').forEach(btn => {
+    btn.addEventListener('click', () => {
+      flashKey(btn);
+      const key = btn.getAttribute('data-key');
+      if (!key) return;
+      if (key === 'DEL') { doDelete(); return; }
+      if (key === 'ENTER') {
+        playKeyClick(true);
+        if (typedCode.length > 0) _checkSecurity();
+        return;
+      }
+      if (key === 'SPACE') { typeChar(' '); return; }
+      // Skip modifier/function keys
+      if (['SHIFT','CTRL','ALT','CAPS','TAB','ESC','F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12'].includes(key)) {
+        playKeyClick(false);
+        return;
+      }
+      typeChar(key);
+    });
+  });
+
+  // ---- Physical keyboard ----
+  document.addEventListener('keydown', (e) => {
+    const overlay = document.getElementById('securityOverlay');
+    if (!overlay || overlay.style.display === 'none') return;
+
+    const key = e.key;
+    if (key === 'Backspace' || key === 'Delete') {
+      e.preventDefault();
+      doDelete();
+      // flash del key
+      const delBtn = document.querySelector('.kb-key.del-key');
+      if (delBtn) flashKey(delBtn);
+      return;
+    }
+    if (key === 'Enter') {
+      e.preventDefault();
+      playKeyClick(true);
+      const entBtn = document.querySelector('.kb-key.enter-key');
+      if (entBtn) flashKey(entBtn);
+      if (typedCode.length > 0) _checkSecurity();
+      return;
+    }
+    // Accept any printable character (length 1)
+    if (key.length === 1) {
+      typeChar(key);
+      // Flash matching key on visual keyboard
+      const upper = key.toUpperCase();
+      const matching = document.querySelector(`.kb-key[data-key="${upper}"]`) ||
+                       document.querySelector(`.kb-key[data-key="${key}"]`);
+      if (matching) flashKey(matching);
+      return;
+    }
+  });
+
+  // ---- Load password from Firebase ----
+  async function loadPasswordFromFirebase() {
+    try {
+      if (!firebase.apps.length) firebase.initializeApp({
+        apiKey: "AIzaSyBColALXknHVl2tulHfhaivI3dgMBvKyPw",
+        authDomain: "grind-os-tracker.firebaseapp.com",
+        projectId: "grind-os-tracker",
+        storageBucket: "grind-os-tracker.firebasestorage.app",
+        messagingSenderId: "420079203160",
+        appId: "1:420079203160:web:912fb4d90a25abe2a46b2d"
+      });
+      const db = firebase.firestore();
+      const doc = await db.collection('config').doc('auth').get();
+      if (doc.exists && doc.data().password) {
+        _c = doc.data().password;
+        document.getElementById('secStatusLine').textContent = 'ENTER ACCESS CODE TO PROCEED...';
+      } else {
+        document.getElementById('secStatusLine').textContent = 'CONFIG ERROR — CONTACT ADMIN';
+        document.getElementById('secStatusLine').style.color = 'var(--red)';
+      }
+    } catch(e) {
+      document.getElementById('secStatusLine').textContent = 'NETWORK ERROR — RETRY';
+      document.getElementById('secStatusLine').style.color = 'var(--red)';
+      console.error('Password load failed:', e);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('secStatusLine').textContent = 'CONNECTING TO SERVER...';
+  });
+  loadPasswordFromFirebase();
+
+  const statusLines = [
+    'SCANNING BIOMETRICS...',
+    'AWAITING AUTHENTICATION...',
+    'ENTER ACCESS CODE TO PROCEED...',
+    'MONITORING UNAUTHORIZED ACCESS...'
+  ];
+  let statusIdx = 0;
+  function cycleStatus() {
+    if (!locked && _c !== null) {
+      document.getElementById('secStatusLine').textContent = statusLines[statusIdx % statusLines.length];
+      statusIdx++;
+    }
+  }
+  setInterval(cycleStatus, 2200);
+
+  function startLockout() {
+    locked = true;
+    lockRemaining = LOCK_SECS;
+    document.getElementById('lockoutTimer').style.display = 'block';
+    document.getElementById('secStatusLine').textContent = 'SYSTEM LOCKED — COOLDOWN ACTIVE';
+    document.getElementById('secStatusLine').style.color = 'var(--red)';
+    document.getElementById('secAttempts').textContent = 'WAIT FOR COOLDOWN TO RETRY';
+    document.getElementById('secAttempts').style.color = 'var(--red)';
+
+    lockTimer = setInterval(() => {
+      lockRemaining--;
+      const m = Math.floor(lockRemaining / 60).toString().padStart(2,'0');
+      const s = (lockRemaining % 60).toString().padStart(2,'0');
+      document.getElementById('lockoutTimer').textContent = m + ':' + s;
+      if (lockRemaining <= 0) {
+        clearInterval(lockTimer);
+        locked = false;
+        attempts = 0;
+        typedCode = '';
+        updateDisplay();
+        document.getElementById('secError').textContent = '';
+        document.getElementById('lockoutTimer').style.display = 'none';
+        document.getElementById('secStatusLine').textContent = 'SYSTEM UNLOCKED — RETRY NOW';
+        document.getElementById('secStatusLine').style.color = 'var(--neon3)';
+        document.getElementById('secAttempts').textContent = 'SYSTEM LOCKS AFTER 5 FAILED ATTEMPTS';
+        document.getElementById('secAttempts').style.color = 'var(--text3)';
+      }
+    }, 1000);
+  }
+
+  window._checkSecurity = function() {
+    if (locked) return;
+    const val = typedCode;
+    const errEl = document.getElementById('secError');
+    const attEl = document.getElementById('secAttempts');
+
+    if (val === _c) {
+      errEl.textContent = 'ACCESS GRANTED — WELCOME BACK, HARIPRASANTH';
+      errEl.style.color = 'var(--green)';
+      document.getElementById('secStatusLine').textContent = 'AUTHENTICATION SUCCESSFUL';
+      document.getElementById('secStatusLine').style.color = 'var(--green)';
+      // flash all dots green
+      document.querySelectorAll('.sec-digit-box').forEach(b => {
+        b.style.borderColor = 'var(--green)';
+        b.style.boxShadow = '0 0 14px rgba(0,255,136,0.7)';
+        b.style.color = 'var(--green)';
+      });
+      playBootSound();
+      setTimeout(() => {
+        const overlay = document.getElementById('securityOverlay');
+        overlay.classList.add('granted');
+        setTimeout(() => { overlay.style.display = 'none'; }, 800);
+      }, 700);
+    } else {
+      attempts++;
+      playDenySound();
+      errEl.style.animation = 'none';
+      void errEl.offsetWidth;
+      errEl.style.animation = '';
+
+      // flash dots red
+      document.querySelectorAll('.sec-digit-box').forEach(b => {
+        b.style.borderColor = 'var(--red)';
+        b.style.boxShadow = '0 0 12px rgba(255,51,102,0.6)';
+        setTimeout(() => { b.style.borderColor = ''; b.style.boxShadow = ''; b.style.color = ''; }, 400);
+      });
+
+      if (attempts >= MAX_ATT) {
+        errEl.textContent = 'MAX ATTEMPTS REACHED — COOLING DOWN';
+        errEl.style.color = 'var(--red)';
+        startLockout();
+      } else {
+        const rem = MAX_ATT - attempts;
+        errEl.textContent = 'ACCESS DENIED — INVALID CODE';
+        errEl.style.color = 'var(--red)';
+        attEl.textContent = 'WARNING: ' + rem + ' ATTEMPT' + (rem === 1 ? '' : 'S') + ' REMAINING';
+        attEl.style.color = rem <= 2 ? 'var(--red)' : 'var(--gold)';
+        setTimeout(() => {
+          typedCode = '';
+          updateDisplay();
+        }, 350);
+      }
+    }
+  };
+})();
+
+// ===== AUDIO ENGINE =====
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playBootSound() {
+  audioCtx.resume();
+  const now = audioCtx.currentTime;
+
+  const rumble = audioCtx.createOscillator();
+  const rumbleGain = audioCtx.createGain();
+  rumble.type = 'sawtooth';
+  rumble.frequency.setValueAtTime(40, now);
+  rumble.frequency.linearRampToValueAtTime(60, now + 0.5);
+  rumbleGain.gain.setValueAtTime(0, now);
+  rumbleGain.gain.linearRampToValueAtTime(0.08, now + 0.1);
+  rumbleGain.gain.linearRampToValueAtTime(0, now + 0.5);
+  rumble.connect(rumbleGain); rumbleGain.connect(audioCtx.destination);
+  rumble.start(now); rumble.stop(now + 0.5);
+
+  const sweep = audioCtx.createOscillator();
+  const sweepGain = audioCtx.createGain();
+  sweep.type = 'sine';
+  sweep.frequency.setValueAtTime(150, now + 0.1);
+  sweep.frequency.exponentialRampToValueAtTime(1200, now + 0.8);
+  sweepGain.gain.setValueAtTime(0, now + 0.1);
+  sweepGain.gain.linearRampToValueAtTime(0.12, now + 0.2);
+  sweepGain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+  sweep.connect(sweepGain); sweepGain.connect(audioCtx.destination);
+  sweep.start(now + 0.1); sweep.stop(now + 0.9);
+
+  [0.6, 0.75, 0.9, 1.0].forEach((t, i) => {
+    const b = audioCtx.createOscillator();
+    const bg = audioCtx.createGain();
+    b.type = 'square';
+    b.frequency.value = 800 + i * 200;
+    bg.gain.setValueAtTime(0.04, now + t);
+    bg.gain.exponentialRampToValueAtTime(0.001, now + t + 0.08);
+    b.connect(bg); bg.connect(audioCtx.destination);
+    b.start(now + t); b.stop(now + t + 0.1);
+  });
+
+  [[440, 1.1], [554, 1.15], [660, 1.2]].forEach(([freq, time]) => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.05, now + time);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + time + 0.4);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(now + time); osc.stop(now + time + 0.5);
+  });
+
+  const ping = audioCtx.createOscillator();
+  const pingGain = audioCtx.createGain();
+  ping.type = 'sine';
+  ping.frequency.setValueAtTime(2400, now + 1.4);
+  ping.frequency.exponentialRampToValueAtTime(1800, now + 1.7);
+  pingGain.gain.setValueAtTime(0.06, now + 1.4);
+  pingGain.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+  ping.connect(pingGain); pingGain.connect(audioCtx.destination);
+  ping.start(now + 1.4); ping.stop(now + 1.8);
+}
+
+function playDenySound() {
+  audioCtx.resume();
+  const now = audioCtx.currentTime;
+  [0, 0.12, 0.24].forEach((t) => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(200, now + t);
+    osc.frequency.linearRampToValueAtTime(100, now + t + 0.1);
+    gain.gain.setValueAtTime(0.06, now + t);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + t + 0.1);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(now + t); osc.stop(now + t + 0.12);
+  });
+}
+
+function playClickSound() {
+  try {
+    audioCtx.resume();
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(800, now);
+    osc.frequency.exponentialRampToValueAtTime(600, now + 0.05);
+    gain.gain.setValueAtTime(0.04, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(now + 0.05);
+  } catch(e) {}
+}
+
+function playSuccessSound() {
+  try {
+    audioCtx.resume();
+    const now = audioCtx.currentTime;
+    [[800, 1200, 0, 0.06], [1200, 1600, 0.03, 0.09]].forEach(([f1, f2, t1, t2]) => {
+      const osc = audioCtx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f1, now + t1);
+      osc.frequency.exponentialRampToValueAtTime(f2, now + t2);
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.06, now + t1);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + t2);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(now + t1); osc.stop(now + t2 + 0.01);
+    });
+  } catch(e) {}
+}
+
+document.addEventListener('click', (e) => {
+  const target = e.target.closest('.clickable, .task-row, .stat-card, .timer-block, .heatmap-cell, .tab, .modal-task, .edit-btn, .btn, .close-modal, .week-bar-wrap, .cat-bar-row, .streak-display, .ring-wrap');
+  if (target) {
+    if (target.classList.contains('task-row') || target.closest('.task-row')) {
+      const row = target.classList.contains('task-row') ? target : target.closest('.task-row');
+      if (!row.classList.contains('done')) playSuccessSound();
+      else playClickSound();
+    } else {
+      playClickSound();
+    }
+  }
+});
+
+// ===== FIREBASE =====
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBColALXknHVl2tulHfhaivI3dgMBvKyPw",
+  authDomain: "grind-os-tracker.firebaseapp.com",
+  projectId: "grind-os-tracker",
+  storageBucket: "grind-os-tracker.firebasestorage.app",
+  messagingSenderId: "420079203160",
+  appId: "1:420079203160:web:912fb4d90a25abe2a46b2d"
+};
+
+// ===== CONFIG — FRESH START 14 APR 2026 =====
+const START = new Date('2026-04-14T00:00:00');
+const END   = new Date('2027-04-14T23:59:59');
+const TOTAL_DAYS = 366;
+
+const TASKS = [
+  { id: 'lc',  name: 'LeetCode' },
+  { id: 'gh',  name: 'GitHub Contribution' },
+  { id: 'apt', name: 'Aptitude Solving' },
+  { id: 'g4g', name: 'GeeksForGeeks' },
+  { id: 'cc',  name: 'CodeChef' },
+  { id: 'li',  name: 'LinkedIn Post/Active' },
+  { id: 'com', name: 'Communication Training' },
+  { id: 'mt',  name: 'MonkeyType Practice' },
+];
+const PTS = 5;
+
+let db = null, firebaseReady = false, isSyncing = false, data = {};
+
+// ===== FIREBASE =====
+function initFirebase() {
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+    firebaseReady = true;
+    setSyncStatus('syncing', 'CONNECTING TO FIREBASE...');
+    syncFromFirebase();
+  } catch(e) {
+    console.warn('Firebase init error:', e);
+    setSyncStatus('error', 'FIREBASE ERROR');
+    firebaseReady = false;
+  }
+}
+
+// ===== LOCAL STORAGE — scoped to new start date =====
+const STORAGE_KEY = 'grindos_v2_2026';
+
+function loadLocal() {
+  try {
+    const local = localStorage.getItem(STORAGE_KEY);
+    if (local) data = JSON.parse(local);
+    // Strip any dates before START (clean slate)
+    const startStr = dateStr(START);
+    for (const k of Object.keys(data)) {
+      if (k < startStr) delete data[k];
+    }
+  } catch(e) { data = {}; }
+}
+
+function saveLocal() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+}
+
+function setSyncStatus(status, msg) {
+  const dot = document.getElementById('syncDot');
+  const txt = document.getElementById('syncStatus');
+  if (dot) dot.className = 'sync-dot ' + status;
+  if (txt) txt.textContent = msg;
+}
+
+function showNotif(msg) {
+  const n = document.getElementById('notif');
+  n.textContent = msg;
+  n.classList.add('show');
+  setTimeout(() => n.classList.remove('show'), 2500);
+}
+
+async function syncFromFirebase() {
+  if (!db || isSyncing) return;
+  isSyncing = true;
+  setSyncStatus('syncing', 'SYNCING WITH CLOUD...');
+  try {
+    const snapshot = await db.collection('grindos_logs').get();
+    const remoteData = {};
+    const startStr = dateStr(START); // '2026-04-14'
+    const toDelete = [];
+    snapshot.forEach(doc => {
+      if (doc.id >= startStr) {
+        remoteData[doc.id] = doc.data();
+      } else {
+        // Delete old records (before Apr 14) from Firebase
+        toDelete.push(doc.id);
+      }
+    });
+    // Purge old docs silently
+    toDelete.forEach(id => db.collection('grindos_logs').doc(id).delete().catch(()=>{}));
+    data = { ...data, ...remoteData };
+    saveLocal();
+    renderAll();
+    setSyncStatus('synced', 'SYNCED — ' + new Date().toLocaleTimeString('en-IN'));
+    showNotif('SYNCED WITH FIREBASE');
+  } catch(err) {
+    console.error('Sync error:', err);
+    setSyncStatus('error', 'SYNC FAILED — RETRY');
+  }
+  isSyncing = false;
+}
+
+async function pushToFirebase(ds, dayData) {
+  if (!db) return;
+  try {
+    setSyncStatus('syncing', 'SAVING...');
+    await db.collection('grindos_logs').doc(ds).set(dayData);
+    setTimeout(() => syncFromFirebase(), 1000);
+  } catch(e) {
+    setSyncStatus('error', 'SAVE FAILED');
+    console.error(e);
+  }
+}
+
+// ===== HELPERS =====
+function dateStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+function today() { return dateStr(new Date()); }
+function getDayData(ds) { return data[ds] || {}; }
+function getDayPts(ds) { return TASKS.filter(t => getDayData(ds)[t.id]).length * PTS; }
+function getDayCount(ds) { return TASKS.filter(t => getDayData(ds)[t.id]).length; }
+
+function allDates() {
+  const dates = [];
+  const d = new Date(START);
+  const e = new Date(END);
+  while (d <= e) { dates.push(dateStr(new Date(d))); d.setDate(d.getDate() + 1); }
+  return dates;
+}
+
+function daysElapsed() {
+  const now = new Date();
+  // Day 1 = Apr 14 2026 (diff=0 → return 1)
+  const diff = Math.floor((now - START) / 86400000);
+  return Math.max(0, Math.min(diff, TOTAL_DAYS - 1)) + 1;
+}
+
+// ===== STREAK — starts from today (14 APR 2026) =====
+function calcStreak() {
+  let best = 0, cur = 0, currentStreak = 0;
+  const td = today();
+
+  // Best streak over all dates
+  for (const ds of allDates()) {
+    if (getDayPts(ds) > 0) { cur++; best = Math.max(best, cur); } else cur = 0;
+  }
+
+  // Current streak: walk backwards from today
+  const check = new Date();
+  for (let i = 0; i < TOTAL_DAYS; i++) {
+    const ds = dateStr(check);
+    if (ds < dateStr(START)) break; // don't go before start
+    if (getDayPts(ds) > 0) { currentStreak++; check.setDate(check.getDate() - 1); }
+    else break;
+  }
+
+  return { streak: currentStreak, best };
+}
+
+function formatDate(ds) {
+  const d = new Date(ds + 'T00:00:00');
+  return d.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+// ===== RENDER =====
+function renderToday() {
+  const td = today();
+  document.getElementById('todayDateLabel').textContent = formatDate(td);
+  const dayData = getDayData(td);
+  const grid = document.getElementById('todayGrid');
+  grid.innerHTML = '';
+  TASKS.forEach(t => {
+    const done = !!dayData[t.id];
+    const row = document.createElement('div');
+    row.className = 'task-row' + (done ? ' done' : '');
+    row.innerHTML = `
+      <div class="task-name">${t.name}</div>
+      <div class="task-pts">+${PTS} XP</div>
+      <div class="task-toggle">${done ? '✓' : ''}</div>
+    `;
+    row.addEventListener('click', () => toggleTodayTask(t.id));
+    grid.appendChild(row);
+  });
+  const pts = getDayPts(td);
+  document.getElementById('todayTotalPts').textContent = `${pts} / ${TASKS.length * PTS} XP`;
+  document.getElementById('statTodayPts').textContent = pts;
+}
+
+function renderStats() {
+  const { streak, best } = calcStreak();
+  const elapsed = daysElapsed();
+  const left = Math.max(0, TOTAL_DAYS - elapsed);
+  let totalXP = 0, weekXP = 0, perfectDays = 0, activeDays = 0;
+  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+  for (const ds of allDates()) {
+    const p = getDayPts(ds);
+    if (p > 0) { totalXP += p; activeDays++; }
+    if (p === TASKS.length * PTS) perfectDays++;
+    if (new Date(ds + 'T00:00:00') >= weekAgo) weekXP += p;
+  }
+  document.getElementById('statStreak').textContent = streak;
+  document.getElementById('statBest').textContent = best;
+  document.getElementById('statWeekPts').textContent = weekXP;
+  document.getElementById('statCompDays').textContent = perfectDays;
+  document.getElementById('statAvgPts').textContent = elapsed > 0 ? Math.round(totalXP / elapsed) : 0;
+  document.getElementById('sideStreak').textContent = streak;
+  document.getElementById('daysElapsed').textContent = elapsed;
+  document.getElementById('daysLeft').textContent = left;
+  document.getElementById('totalXP').textContent = totalXP;
+
+  const pct = Math.min(elapsed / TOTAL_DAYS, 1);
+  const circumference = 314;
+  document.getElementById('yearRing').style.strokeDashoffset = circumference - pct * circumference;
+  document.getElementById('yearPct').textContent = Math.round(pct * 100) + '%';
+}
+
+function renderCatBars() {
+  const elapsed = Math.max(1, daysElapsed());
+  const bars = document.getElementById('catBars');
+  bars.innerHTML = '';
+  TASKS.forEach(t => {
+    let count = 0;
+    for (const ds of allDates()) { if (getDayData(ds)[t.id]) count++; }
+    const pct = Math.round((count / elapsed) * 100);
+    const row = document.createElement('div');
+    row.className = 'cat-bar-row clickable';
+    row.innerHTML = `
+      <div class="cat-bar-top">
+        <span class="cat-bar-name">${t.name.split(' ')[0]}</span>
+        <span class="cat-bar-val">${count}d · ${pct}%</span>
+      </div>
+      <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%"></div></div>
+    `;
+    bars.appendChild(row);
+  });
+}
+
+// ===== WEEKLY CHART — FULLY RESPONSIVE =====
+function renderWeekChart() {
+  const chart = document.getElementById('weekChart');
+  chart.innerHTML = '';
+  const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const max = TASKS.length * PTS;
+  const todayStr = today();
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const ds = dateStr(d);
+    const pts = getDayPts(ds);
+    const heightPct = max > 0 ? (pts / max * 100) : 0;
+    const dow = d.getDay();
+    const dayName = dayNames[dow === 0 ? 6 : dow - 1];
+    const isToday = ds === todayStr;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'week-bar-wrap clickable';
+
+    const outer = document.createElement('div');
+    outer.className = 'week-bar-outer';
+
+    const inner = document.createElement('div');
+    inner.className = 'week-bar-inner' + (isToday ? ' today-bar' : '');
+    inner.style.height = heightPct + '%';
+    // Tooltip on the bar
+    inner.title = `${dayName}: ${pts} XP`;
+
+    outer.appendChild(inner);
+
+    const label = document.createElement('div');
+    label.className = 'week-day' + (isToday ? ' today-label' : '');
+    label.textContent = isToday ? 'NOW' : dayName;
+
+    wrap.appendChild(outer);
+    wrap.appendChild(label);
+    wrap.addEventListener('click', () => openModal(ds));
+    chart.appendChild(wrap);
+  }
+}
+
+// ===== HEATMAP — MOBILE FRIENDLY =====
+function renderHeatmap() {
+  const grid = document.getElementById('heatmapGrid');
+  const monthLabels = document.getElementById('heatmapMonthLabels');
+  const dayLabels = document.getElementById('heatmapDayLabels');
+  grid.innerHTML = '';
+  monthLabels.innerHTML = '';
+  dayLabels.innerHTML = '';
+
+  const isMobile = window.innerWidth < 600;
+  const CELL = isMobile ? 10 : 12;
+  const GAP = 3;
+  const STEP = CELL + GAP;
+
+  ['','M','','W','','F',''].forEach(l => {
+    const el = document.createElement('div');
+    el.className = 'heatmap-day-label';
+    el.textContent = l;
+    dayLabels.appendChild(el);
+  });
+
+  // Apr 14 2026 = Tuesday. Start heatmap exactly on Apr 14 — no Apr 13 bleed.
+  const startDate = new Date('2026-04-14T00:00:00');
+  const endDate   = new Date('2027-04-14T23:59:59');
+
+  // Apr 14 is Tuesday → Mon-based row index = 1 (Mon=0, Tue=1, ...)
+  const startDow = startDate.getDay(); // 2 = Tuesday
+  const rowOffset = startDow === 0 ? 6 : startDow - 1; // = 1
+
+  let currentDate = new Date(startDate);
+  let col = null;
+  let colIdx = 0;
+  let lastMonth = -1;
+  const monthColMap = [];
+  let firstCol = true;
+
+  while (currentDate <= endDate) {
+    const cdow = currentDate.getDay();
+    const rowIdx = cdow === 0 ? 6 : cdow - 1; // Mon-based
+
+    // New column: at Monday, or on the very first date (Apr 14, Tuesday)
+    if (firstCol || rowIdx === 0) {
+      col = document.createElement('div');
+      col.className = 'heatmap-col';
+
+      // Pad blank rows above Apr 14 so Tuesday aligns correctly
+      if (firstCol && rowOffset > 0) {
+        for (let r = 0; r < rowOffset; r++) {
+          const blank = document.createElement('div');
+          blank.className = 'heatmap-cell';
+          blank.style.opacity = '0';
+          blank.style.pointerEvents = 'none';
+          col.appendChild(blank);
+        }
+      }
+
+      grid.appendChild(col);
+
+      if (currentDate.getMonth() !== lastMonth) {
+        monthColMap.push({ col: colIdx, label: currentDate.toLocaleString('en', { month: 'short' }) });
+        lastMonth = currentDate.getMonth();
+      }
+      colIdx++;
+      firstCol = false;
+    }
+
+    const ds = dateStr(currentDate);
+    const cell = document.createElement('div');
+    cell.className = 'heatmap-cell clickable';
+    const count = getDayCount(ds);
+    cell.setAttribute('data-pts', count);
+    cell.setAttribute('data-date', ds);
+
+    cell.addEventListener('mouseenter', (e) => showTooltip(e, ds));
+    cell.addEventListener('mouseleave', hideTooltip);
+    cell.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      showTouchTip(touch.clientX, touch.clientY, ds);
+      setTimeout(hideTouchTip, 1500);
+    }, { passive: false });
+    cell.addEventListener('click', () => openModal(ds));
+
+    if (col) col.appendChild(cell);
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  // Month labels
+  monthLabels.style.position = 'relative';
+  monthLabels.style.height = '16px';
+  const totalW = colIdx * STEP;
+  monthLabels.style.minWidth = totalW + 'px';
+  monthLabels.style.width = totalW + 'px';
+
+  monthColMap.forEach(({ col: c, label }) => {
+    const spacer = document.createElement('div');
+    spacer.textContent = label;
+    spacer.style.cssText = `
+      position: absolute;
+      left: ${c * STEP}px;
+      top: 0;
+      font-size: 9px;
+      color: var(--text3);
+      font-family: 'Share Tech Mono', monospace;
+      white-space: nowrap;
+      line-height: 16px;
+    `;
+    monthLabels.appendChild(spacer);
+  });
+}
+
+function renderHistory() {
+  const body = document.getElementById('historyBody');
+  body.innerHTML = '';
+  const dates = allDates().filter(ds => getDayPts(ds) > 0 || data[ds]).reverse();
+  document.getElementById('historyEmpty').style.display = dates.length ? 'none' : 'block';
+  dates.slice(0, 100).forEach(ds => {
+    const dd = getDayData(ds);
+    const pts = getDayPts(ds);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text2);white-space:nowrap;">${formatDate(ds)}</td>
+      ${TASKS.map(t => `<td><span class="task-dot ${dd[t.id] ? 'done' : 'miss'}"></span></td>`).join('')}
+      <td><span class="pts-badge">${pts} XP</span></td>
+      <td>${isViewOnly ? '<span style="font-family:\'Share Tech Mono\',monospace;font-size:9px;color:var(--text3);">—</span>' : `<button class="edit-btn clickable" onclick="openModal('${ds}')">EDIT</button>`}</td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+// ===== TOOLTIP =====
+function showTooltip(e, ds) {
+  const tip = document.getElementById('tooltip');
+  const pts = getDayPts(ds);
+  const dd = getDayData(ds);
+  const doneNames = TASKS.filter(t => dd[t.id]).map(t => t.name.split(' ')[0]);
+  tip.textContent = `${formatDate(ds)} | ${pts} XP${doneNames.length ? ' | ' + doneNames.join(', ') : ''}`;
+  tip.style.display = 'block';
+  tip.style.left = (e.clientX + 12) + 'px';
+  tip.style.top = (e.clientY - 34) + 'px';
+}
+function hideTooltip() { document.getElementById('tooltip').style.display = 'none'; }
+
+function showTouchTip(x, y, ds) {
+  const tip = document.getElementById('touchTip');
+  const pts = getDayPts(ds);
+  tip.textContent = `${ds} — ${pts} XP`;
+  tip.style.display = 'block';
+  tip.style.left = Math.min(x + 10, window.innerWidth - 200) + 'px';
+  tip.style.top = Math.max(y - 40, 10) + 'px';
+}
+function hideTouchTip() { document.getElementById('touchTip').style.display = 'none'; }
+
+document.addEventListener('mousemove', (e) => {
+  const tip = document.getElementById('tooltip');
+  if (tip.style.display === 'block') {
+    tip.style.left = (e.clientX + 12) + 'px';
+    tip.style.top = (e.clientY - 34) + 'px';
+  }
+});
+
+// ===== TABS =====
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['dashboard','heatmap','history'][i] === name);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'heatmap') renderHeatmap();
+  if (name === 'history') renderHistory();
+}
+
+// ===== MODAL =====
+let modalDate = null;
+let modalState = {};
+
+function isPastDayLocked(ds) {
+  // After midnight, only today can be edited
+  return ds < today();
+}
+
+function openModal(ds) {
+  modalDate = ds;
+  modalState = { ...(getDayData(ds)) };
+  const locked = isViewOnly || isPastDayLocked(ds);
+  document.getElementById('modalTitle').textContent = isViewOnly
+    ? 'VIEW ONLY — ' + ds
+    : (isPastDayLocked(ds) ? 'VIEW ONLY — ' + ds + ' [LOCKED]' : 'LOG ENTRY — ' + ds);
+  document.getElementById('modalDate').textContent = formatDate(ds);
+  renderModalTasks(locked);
+
+  // Show/hide save button and lock notice
+  const saveBtn = document.querySelector('#modalOverlay .modal-save');
+  if (saveBtn) {
+    saveBtn.style.display = locked ? 'none' : '';
+    let lockNote = document.getElementById('modalLockNote');
+    if (!lockNote) {
+      lockNote = document.createElement('div');
+      lockNote.id = 'modalLockNote';
+      lockNote.style.cssText = 'text-align:center;font-family:"Share Tech Mono",monospace;font-size:11px;color:var(--red);padding:10px 0 4px;letter-spacing:0.12em;';
+      saveBtn.parentNode.insertBefore(lockNote, saveBtn);
+    }
+    lockNote.textContent = isViewOnly ? ' VIEW ONLY MODE — LOGIN TO EDIT' : (locked ? '🔒 PAST DAY — LOG LOCKED AFTER MIDNIGHT' : '');
+    lockNote.style.display = locked ? 'block' : 'none';
+  }
+
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function renderModalTasks(isLocked) {
+  const container = document.getElementById('modalTasks');
+  container.innerHTML = '';
+  TASKS.forEach(t => {
+    const checked = !!modalState[t.id];
+    const div = document.createElement('div');
+    div.className = 'modal-task' + (checked ? ' checked' : '') + (isLocked ? ' locked-task' : '');
+    div.style.opacity = isLocked ? '0.7' : '1';
+    div.style.cursor = isLocked ? 'not-allowed' : 'pointer';
+    div.innerHTML = `
+      <div class="modal-checkbox">${checked ? '✓' : ''}</div>
+      <div class="modal-task-name">${t.name}</div>
+      <div class="modal-task-pts">+${PTS} XP</div>
+    `;
+    if (!isLocked) {
+      div.addEventListener('click', () => { modalState[t.id] = !modalState[t.id]; renderModalTasks(false); });
+    }
+    container.appendChild(div);
+  });
+  const pts = TASKS.filter(t => modalState[t.id]).length * PTS;
+  document.getElementById('modalTotal').textContent = `${pts} XP`;
+}
+
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); modalDate = null; }
+
+function saveModal() {
+  if (!modalDate) return;
+  if (isViewOnly) { showNotif(' VIEW ONLY — LOGIN TO EDIT'); return; }
+  if (isPastDayLocked(modalDate)) {
+    showNotif(' PAST DAY — CANNOT EDIT AFTER MIDNIGHT');
+    return;
+  }
+  data[modalDate] = { ...modalState };
+  saveLocal();
+  renderAll();
+  closeModal();
+  showNotif('ENTRY SAVED — ' + modalDate);
+  pushToFirebase(modalDate, data[modalDate]);
+}
+
+// ===== TODAY TASK TOGGLE =====
+function toggleTodayTask(taskId) {
+  if (isViewOnly) { showNotif(' VIEW ONLY — LOGIN TO EDIT'); return; }
+  const td = today();
+  if (isPastDayLocked(td)) return; // safety guard (shouldn't happen)
+  if (!data[td]) data[td] = {};
+  data[td][taskId] = !data[td][taskId];
+  saveLocal();
+  renderAll();
+  showNotif(data[td][taskId] ? `+${PTS} XP — ${TASKS.find(t=>t.id===taskId).name}` : 'Task removed');
+  pushToFirebase(td, data[td]);
+}
+
+function renderAll() {
+  renderToday();
+  renderStats();
+  renderCatBars();
+  renderWeekChart();
+}
+
+// ===== START =====
+loadLocal();
+initFirebase();
+renderAll();
+
+document.getElementById('modalOverlay').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+});
+
+// Auto-sync every 10 min
+setInterval(() => { if (db && !isSyncing) syncFromFirebase(); }, 10 * 60 * 1000);
+
+window.syncFromFirebase = syncFromFirebase;
+window.switchTab = switchTab;
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.saveModal = saveModal;
+</script>
+</body>
+</html>
