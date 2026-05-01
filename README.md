@@ -61,7 +61,7 @@ Any changes pushed to the main branch are automatically deployed to the live sit
 
 ## Author
 
-Hariprasanth
+HARIPRASANTH T
 
 ---
 
